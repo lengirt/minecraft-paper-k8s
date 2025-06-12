@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $.Chart.Name }}-statefulset
+  labels:
+    app: {{ $.Chart.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $.Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $.Chart.Name }}
+    spec:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      initContainers:
+      - name: init-data
+        image: {{ .Values.werf.image.mcrun }}
+        command: 
+        - sh 
+        - -c
+        - |
+          cp -r /app/. /appmc/ && \
+          echo "rcon.password=$(cat /secret/rcon.password)" >> /appmc/server.properties && \
+          chown -R 1000:1000 /appmc
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: mc-storage
+          mountPath: /appmc
+        - name: secret-volume
+          mountPath: /secret
+          readOnly: true
+        - name: config-volume
+          mountPath: /app/server.properties
+          subPath: server.properties
+      containers:
+      - name: {{ $.Chart.Name }}
+        image: {{ .Values.werf.image.mcrun }}
+        workingDir: /appmc
+        command: [ "java", "-Xms4G", "-Xmx4G", "-jar", "paper-1.21.4-232.jar", "--nogui" ]
+        ports:
+          - containerPort: 25565
+            name: mc
+            protocol: TCP
+          - containerPort: 25575
+            name: rcon
+            protocol: TCP
+        resources:
+          requests:
+            cpu: {{ $.Values.requests.cpu }}
+            memory: {{ $.Values.requests.memory }}
+          limits:
+            cpu: {{ $.Values.limits.cpu }}
+            memory: {{ $.Values.limits.memory }}
+        imagePullPolicy: Always
+        livenessProbe:
+          tcpSocket:
+            port: 25565
+          initialDelaySeconds: 60
+          periodSeconds: 20
+          failureThreshold: 3
+          timeoutSeconds: 5  
+        readinessProbe:
+          tcpSocket:
+            port: 25565
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+            - KILL
+            - MKNOD
+            - SETGID
+            - SETUID
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsUser: 1000
+          runAsNonRoot: true
+          runAsGroup: 1000
+        volumeMounts:
+        - name: mc-storage
+          mountPath: /appmc
+      volumes:
+        - name: mc-storage
+          persistentVolumeClaim:
+            claimName: mc-pvc
+        - name: secret-volume
+          secret:
+            secretName: mc-rcon-secret
+        - name: config-volume
+          configMap:
+            name: server-properties
+      imagePullSecrets:
+      - name: regcred
+    

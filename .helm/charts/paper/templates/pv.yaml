@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mc-pv
+spec:
+  storageClassName: standard # Reference a custom StorageClass. Omit line to use the default StorageClass
+  accessModes:
+    - ReadWriteMany # ReadWriteOnce, ReadOnlyMany, ReadWriteMany
+  capacity:
+    storage: 15Gi
+  hostPath:
+    path: /mnt/data/mc

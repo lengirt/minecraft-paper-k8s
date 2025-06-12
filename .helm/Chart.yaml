@@ -1,0 +1,6 @@
+dependencies:
+  - name: paper
+    version: "0.0.1"
+    export-values:
+      - parent: werf
+        child: werf

@@ -1,0 +1,6 @@
+dependencies:
+- name: paper
+  repository: ""
+  version: 0.0.1
+digest: sha256:98aab28d77993ef2e430a13c3a848467814739daeba4aa6beabf022bb93b2e69
+generated: "2025-06-13T14:41:09.807546862+03:00"
